@@ -1,16 +1,16 @@
 sbtPlugin := true
 
-organization := "net.ground5hark.sbt"
+organization := "de.envisia.sbt"
 
 name := "sbt-closure"
 
-version := "0.1.4"
+version := "0.2.0"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.6"
 
-libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20140625"
+libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
 
-addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.0.2")
+addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.1.1")
 
 resolvers ++= Seq(
   "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
@@ -40,7 +40,7 @@ publishTo := {
 }
 
 pomExtra := (
-  <url>https://github.com/ground5hark/sbt-closure</url>
+  <url>https://github.com/envisia/sbt-closure</url>
   <licenses>
     <license>
       <name>MIT</name>
@@ -49,13 +49,13 @@ pomExtra := (
     </license>
   </licenses>
   <scm>
-    <url>git@github.com:ground5hark/sbt-closure.git</url>
-    <connection>scm:git:git@github.com:ground5hark/sbt-closure.git</connection>
+    <url>git@github.com:envisia/sbt-closure.git</url>
+    <connection>scm:git:git@github.com:envisia/sbt-closure.git</connection>
   </scm>
   <developers>
     <developer>
-      <id>ground5hark</id>
-      <name>John Bernardo</name>
-      <url>https://github.com/ground5hark</url>
+      <id>envisia</id>
+      <name>Christian Schmitt</name>
+      <url>https://www.envisia.de</url>
     </developer>
   </developers>)

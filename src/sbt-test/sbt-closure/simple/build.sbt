@@ -2,13 +2,13 @@ import com.typesafe.sbt.web.Import._
 import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.pipeline.Pipeline
 
-organization := "net.ground5hark.sbt"
+organization := "de.envisia.sbt"
 
 name := "sbt-closure-test"
 
 version := "0.1.4"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.10.6"
 
 lazy val root = (project in file(".")).enablePlugins(SbtWeb)
 
