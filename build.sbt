@@ -20,8 +20,6 @@ resolvers ++= Seq(
   Resolver.mavenLocal
 )
 
-publishMavenStyle := true
-
 scriptedSettings
 
 scriptedLaunchOpts ++= Seq(
@@ -30,14 +28,16 @@ scriptedLaunchOpts ++= Seq(
   s"-Dproject.version=${version.value}"
 )
 
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  Some(if (isSnapshot.value) {
-    "snapshots" at nexus + "content/repositories/snapshots"
-  } else {
-    "releases" at nexus + "service/local/staging/deploy/maven2"
-  })
-}
+//publishTo := {
+//  val nexus = "https://oss.sonatype.org/"
+//  Some(if (isSnapshot.value) {
+//    "snapshots" at nexus + "content/repositories/snapshots"
+//  } else {
+//    "releases" at nexus + "service/local/staging/deploy/maven2"
+//  })
+//}
+
+bintrayOrganization := Some("envisia")
 
 pomExtra := (
   <url>https://github.com/envisia/sbt-closure</url>
