@@ -1,36 +1,12 @@
-package net.ground5hark.sbt.closure
+package de.envisia.sbt.closure
 
-import com.google.javascript.jscomp.CommandLineRunner
-import com.typesafe.sbt.web.{PathMapping, SbtWeb}
+import com.typesafe.sbt.web._
 import com.typesafe.sbt.web.pipeline.Pipeline
-import sbt._
 import sbt.Keys._
+import sbt._
 
 import scala.collection.mutable.ListBuffer
 
-object Import {
-  val closure = TaskKey[Pipeline.Stage]("closure", "Runs JavaScript web assets through the Google closure compiler")
-
-  object Closure {
-    val flags = SettingKey[Seq[String]]("closure-flags", "Command line flags to pass to the closure compiler, example: Seq(\"--formatting=PRETTY_PRINT\", \"--accept_const_keyword\")")
-    val suffix = SettingKey[String]("closure-suffix", "Suffix to append to compiled files, default: \".min.js\"")
-    val parentDir = SettingKey[String]("closure-parent-dir", "Parent directory name where closure compiled JS will go, default: \"closure-compiler\"")
-  }
-}
-
-class UncompiledJsFileFilter(suffix: String) extends FileFilter {
-  override def accept(file: File): Boolean =
-    // visible
-    !HiddenFileFilter.accept(file) &&
-    // not already compiled
-    !file.getName.endsWith(suffix) &&
-    // a JS file
-    file.getName.endsWith(".js")
-}
-
-private class SbtClosureCommandLineRunner(args: Array[String]) extends CommandLineRunner(args) {
-  def compile(): Unit = doRun()
-}
 
 object SbtClosure extends AutoPlugin {
   override def requires = SbtWeb
