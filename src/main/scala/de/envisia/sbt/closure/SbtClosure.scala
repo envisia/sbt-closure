@@ -80,42 +80,47 @@ object SbtClosure extends AutoPlugin {
         "--language_out=ECMASCRIPT5"
       )
 
-      implicit val fileHasherIncludingOptions: OpInputHasher[File] =
-        OpInputHasher[File](f => OpInputHash.hashString(f.getCanonicalPath))
+      if (sources.nonEmpty) {
+        implicit val fileHasherIncludingOptions: OpInputHasher[File] =
+          OpInputHasher[File](f => OpInputHash.hashString(f.getCanonicalPath))
 
-      val results = incremental.syncIncremental((streams in Assets).value.cacheDirectory / "run", sources) {
-        modifiedSources: Seq[File] =>
-          val startInstant = Instant.now
+        val results = incremental.syncIncremental((streams in Assets).value.cacheDirectory / "run", sources) {
+          modifiedSources: Seq[File] =>
+            val startInstant = Instant.now
 
-          if (modifiedSources.nonEmpty) {
-            streams.value.log.info(s"Closure compiling on ${modifiedSources.size} source(s")
-          }
-
-
-          val opResults = {
             if (modifiedSources.nonEmpty) {
-              try {
-                invokeCompiler(files, target, flags)
-                Map(target -> OpSuccess(sources.toSet, Set(target)))
-              } catch {
-                case e: Exception => Map(target -> OpFailure)
-              }
-            } else {
-              Map(target -> OpFailure)
+              streams.value.log.info(s"Closure compiling on ${modifiedSources.size} source(s")
             }
-          }
 
-          val duration = Duration.between(startInstant, Instant.now).toMillis
 
-          val createdFiles = Seq(target, sourceMapTarget)
-          if (createdFiles.nonEmpty) {
-            streams.value.log.info(s"Closure compilation done in $duration ms. ${createdFiles.size} resulting js files(s)")
-          }
+            val opResults = {
+              if (modifiedSources.nonEmpty) {
+                try {
+                  invokeCompiler(files, target, flags)
+                  Map(target -> OpSuccess(sources.toSet, Set(target)))
+                } catch {
+                  case e: Exception => Map(target -> OpFailure)
+                }
+              } else {
+                Map(target -> OpFailure)
+              }
+            }
 
-          (opResults, createdFiles)
-      }(fileHasherIncludingOptions)
+            val duration = Duration.between(startInstant, Instant.now).toMillis
 
-      (results._1 ++ results._2.toSet).toSeq
+            val createdFiles = Seq(target, sourceMapTarget)
+            if (createdFiles.nonEmpty) {
+              streams.value.log.info(s"Closure compilation done in $duration ms. ${createdFiles.size} resulting js files(s)")
+            }
+
+            (opResults, createdFiles)
+        }(fileHasherIncludingOptions)
+
+
+        (results._1 ++ results._2.toSet).toSeq
+      } else {
+        Seq()
+      }
     }.dependsOn(WebKeys.webModules in Assets).value
   )
 
