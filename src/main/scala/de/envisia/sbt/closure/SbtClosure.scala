@@ -10,6 +10,7 @@ import sbt.Keys._
 import sbt._
 
 import scala.language.implicitConversions
+import scala.util.{Failure, Success, Try}
 
 
 object SbtClosure extends AutoPlugin {
@@ -93,23 +94,28 @@ object SbtClosure extends AutoPlugin {
             }
 
 
-            val opResults = {
+            val compilationResults: Map[File, Try[File]] = {
               if (modifiedSources.nonEmpty) {
                 try {
                   invokeCompiler(files, target, flags)
-                  Map(target -> OpSuccess(sources.toSet, Set(target)))
+                  modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
                 } catch {
-                  case e: Exception => Map(target -> OpFailure)
+                  case e: Exception => modifiedSources.map(inputFile => inputFile -> Failure(e)).toMap
                 }
               } else {
-                Map(target -> OpFailure)
+                Map()
               }
+            }
+
+            val opResults: Map[File, OpResult] = compilationResults.mapValues{
+              case Success(result) => OpSuccess(sources.toSet, Set(target))
+              case Failure(_) => OpFailure
             }
 
             val duration = Duration.between(startInstant, Instant.now).toMillis
 
             val createdFiles = Seq(target, sourceMapTarget)
-            if (createdFiles.nonEmpty) {
+            if (modifiedSources.nonEmpty) {
               streams.value.log.info(s"Closure compilation done in $duration ms. ${createdFiles.size} resulting js files(s)")
             }
 
