@@ -6,6 +6,7 @@ import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
 import com.typesafe.sbt.web._
 import com.typesafe.sbt.web.incremental._
+import com.typesafe.sbt.jse.{SbtJsEngine, SbtJsTask}
 import sbt.Keys._
 import sbt._
 
@@ -38,7 +39,6 @@ object SbtClosure extends AutoPlugin {
     closureDebug := false
   )
 
-
   // Should return something like:
   // java -jar ~/Downloads/compiler-latest/compiler.jar --common_js_entry_module index.module.js
   // --angular_pass --js src/app/index.module.js --js src/app/components/auth-service/auth-service.js
@@ -66,16 +66,23 @@ object SbtClosure extends AutoPlugin {
       val target = targetDir / "app.min.js"
       val sourceMapTarget = targetDir / "app.min.js.map"
 
-      val compilationLevel = if (advancedCompilation.value) "ADVANCED" else "SIMPLE"
+      // SIMPLE_OPTIMIZATIONS, ADVANCED_OPTIMIZATIONS
+      // val compilationLevel = if (advancedCompilation.value) "ADVANCED" else "SIMPLE"
+      val compilationLevel = if (advancedCompilation.value) "ADVANCED_OPTIMIZATIONS" else "SIMPLE_OPTIMIZATIONS"
 
       val sources = (sourceDir ** ((includeFilter in closure in Assets).value -- (excludeFilter in closure in Assets).value)).get
+
+      // val query = """--module-bind "js=babel?presets=es2015" """.trim
+      // val nodeModulePaths = (nodeModuleDirectories in Plugin).value.map(_.getPath)
+      // val webpackJsShell = (webJarsNodeModulesDirectory in Plugin).value / "webpack" / "bin" / "webpack.js"
+      // val executeWebpack = SbtJsTask
 
       val files = sources.map { file => s"--js=${file.getAbsolutePath}" }
       val flags = Seq(
         s"--compilation_level=$compilationLevel",
         "--common_js_entry_module=index.module",
         "--angular_pass",
-        "--formatting=PRETTY_PRINT",
+        // "--formatting=PRETTY_PRINT",
         s"--create_source_map=${sourceMapTarget.getAbsolutePath}",
         "--language_in=ECMASCRIPT6",
         "--language_out=ECMASCRIPT5"
