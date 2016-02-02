@@ -4,18 +4,22 @@ organization := "de.envisia.sbt"
 
 name := "sbt-closure"
 
-version := "0.0.11-M61"
+version := "0.0.11-M97"
 
 scalaVersion := "2.10.6"
 
-libraryDependencies ++= Seq(
-  "org.webjars.npm" % "webpack" % "1.12.10",
-  "org.webjars.npm" % "babel-core" % "6.4.5",
-  "org.webjars.npm" % "babel-loader" % "6.2.1",
-  "org.webjars.npm" % "babel-preset-es2015" % "6.3.13"
-)
 
-libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
+lazy val root = (project in file(".")).settings()
+
+
+lazy val closureWrapper = (project in file("closure-wrapper")).settings(
+  version := "0.2",
+  publish := {},
+  autoScalaLibrary := false,
+  assemblyJarName in assembly := "closure-wrapper.jar",
+  libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
+).disablePlugins(BintrayPlugin)
+// libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
 // ScalaJS 0.6.6
 // libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20130603"
 
@@ -40,7 +44,6 @@ scriptedLaunchOpts ++= Seq(
   "-XX:MaxPermSize=512M",
   s"-Dproject.version=${version.value}"
 )
-
 
 bintrayOrganization := Some("envisia")
 

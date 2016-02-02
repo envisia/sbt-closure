@@ -6,7 +6,6 @@ import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
 import com.typesafe.sbt.web._
 import com.typesafe.sbt.web.incremental._
-import com.typesafe.sbt.jse.{SbtJsEngine, SbtJsTask}
 import sbt.Keys._
 import sbt._
 
@@ -43,14 +42,20 @@ object SbtClosure extends AutoPlugin {
   // java -jar ~/Downloads/compiler-latest/compiler.jar --common_js_entry_module index.module.js
   // --angular_pass --js src/app/index.module.js --js src/app/components/auth-service/auth-service.js
   // --js src/app/components/storage-service/storage-service.js
-  private def invokeCompiler(src: Seq[String], target: File, flags: Seq[String]): Unit = {
+  private def invokeCompiler(src: Seq[String], target: File, flags: Seq[String], log: Logger): Unit = {
     val opts = src ++ Seq(s"--js_output_file=${target.getAbsolutePath}") ++
       flags.filterNot(s => s.trim.startsWith("--js=") || s.trim.startsWith("--js_output_file="))
-    val compiler = new SbtClosureCommandLineRunner(opts.toArray)
-    if (compiler.shouldRunCompiler())
-      compiler.compile()
-    else
-      sys.error("Invalid closure compiler configuration, check flags")
+    try {
+      val compiler = new SbtClosureCommandLineRunner(opts.toArray)
+      val runner = compiler.shouldRunCompiler()
+      log.info(s"Run Compiler: $runner")
+      if (runner)
+        compiler.compile()
+      else
+        sys.error("Invalid closure compiler configuration, check flags")
+    } catch {
+      case e: Exception => log.error(s"Exception: $e"); e.printStackTrace()
+    }
   }
 
   val baseSbtClosureSettings = Seq(
@@ -104,7 +109,7 @@ object SbtClosure extends AutoPlugin {
             val compilationResults: Map[File, Try[File]] = {
               if (modifiedSources.nonEmpty) {
                 try {
-                  invokeCompiler(files, target, flags)
+                  invokeCompiler(files, target, flags, streams.value.log)
                   modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
                 } catch {
                   case e: Exception => modifiedSources.map(inputFile => inputFile -> Failure(e)).toMap
@@ -114,7 +119,7 @@ object SbtClosure extends AutoPlugin {
               }
             }
 
-            val opResults: Map[File, OpResult] = compilationResults.mapValues{
+            val opResults: Map[File, OpResult] = compilationResults.mapValues {
               case Success(result) => OpSuccess(sources.toSet, Set(target))
               case Failure(_) => OpFailure
             }
