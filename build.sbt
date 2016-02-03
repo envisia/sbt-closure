@@ -4,7 +4,7 @@ organization := "de.envisia.sbt"
 
 name := "sbt-closure"
 
-version := "0.0.11-M122"
+version := "0.0.11-M126"
 
 scalaVersion := "2.10.6"
 

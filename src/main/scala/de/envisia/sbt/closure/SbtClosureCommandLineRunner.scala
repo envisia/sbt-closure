@@ -2,20 +2,13 @@ package de.envisia.sbt.closure
 
 import java.io.File
 import java.lang.reflect.InvocationTargetException
-import java.net.URLClassLoader
 import java.util
 
 import scala.collection.JavaConversions._
 
 
-private class SbtClosureCommandLineRunner(src: Seq[(File, String)]) {
-  val resource = this.getClass.getResource("/compiler-20151216.jar")
-  println(resource)
-  val resources = Array(resource)
-
-  val parent = this.getClass.getClassLoader
-  val closureLoader = new URLClassLoader(resources, null)
-  val child = new SbtClosureClassLoader(closureLoader)
+class SbtClosureCommandLineRunner {
+  val child = this.getClass.getClassLoader
 
   val sourceFile: Class[_] = child.loadClass("com.google.javascript.jscomp.SourceFile")
   val compiler: Class[_] = child.loadClass("com.google.javascript.jscomp.Compiler")
@@ -52,16 +45,16 @@ private class SbtClosureCommandLineRunner(src: Seq[(File, String)]) {
   val setAngularPass = compilerOptions.getDeclaredMethod("setAngularPass", classOf[Boolean])
   setAngularPass.invoke(compilerOptionsInstance, true: java.lang.Boolean)
 
-  val sources: java.util.List[Any] = src.map { case (file, content) =>
-    sourceFileFromCode.invoke(null, file.getAbsolutePath, content)
-  }
-
   val compilerInstance = compiler.newInstance()
   val compileMethod = compiler.getDeclaredMethod("compile", classOf[java.util.List[_]], classOf[java.util.List[_]], compilerOptions)
   val initMethod = compiler.getDeclaredMethod("init", classOf[java.util.List[_]], classOf[java.util.List[_]], compilerOptions)
   val checkMethod = compiler.getDeclaredMethod("check")
 
-  def compile: String = {
+  def compile(src: Seq[(File, String)]): String = {
+    val sources: java.util.List[Any] = src.map { case (file, content) =>
+      sourceFileFromCode.invoke(null, file.getAbsolutePath, content)
+    }
+
     initMethod.invoke(compilerInstance, emptySources, sources, compilerOptionsInstance.asInstanceOf[AnyRef])
 
     try {

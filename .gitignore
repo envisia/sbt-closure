@@ -2,3 +2,4 @@
 .idea_modules
 target
 !src/main/resources/*.jar
+!src/main/resources/closure-wrapper.jar

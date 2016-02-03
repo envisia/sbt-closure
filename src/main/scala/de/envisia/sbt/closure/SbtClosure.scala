@@ -10,10 +10,10 @@ import com.typesafe.sbt.web.incremental._
 import sbt.Keys._
 import sbt._
 
+import scala.collection.JavaConversions._
 import scala.io.Source
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
-
 
 object SbtClosure extends AutoPlugin {
   override def requires: Plugins = SbtWeb
@@ -56,8 +56,8 @@ object SbtClosure extends AutoPlugin {
         (file, content)
       }
 
-      val compiler = new SbtClosureCommandLineRunner(files)
-      val runner = compiler.shouldRunCompiler()
+      val compiler = new SbtClosureLoader(src.map(_.asFile))
+      val runner = true
       log.info(s"Run Compiler: $runner")
       if (runner) {
         val res = compiler.compile

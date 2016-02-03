@@ -11,6 +11,11 @@ https://github.com/irundaia/sbt-sassify
 
 **It works works totally different than sbt-closure.**
 
+Thanks
+======
+
+To https://github.com/gzm0 for his great help on the classloader work.
+
 License
 =======
 This code is licensed under the [MIT License].
