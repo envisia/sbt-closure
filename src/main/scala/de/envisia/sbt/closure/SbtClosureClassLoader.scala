@@ -6,10 +6,7 @@ final class SbtClosureClassLoader(closureLoader: ClassLoader, parent: ClassLoade
 
   def this(loader: ClassLoader) = this(loader, ClassLoader.getSystemClassLoader)
 
-  private val bridgeClasses = Set(
-    "de.envisia.closure.SbtClosureCommandLineRunner",
-    "de.envisia.sbt.closure.SbtClosureCommandLineRunner",
-    "de.envisia.sbt.closure.SbtClosureCommandLineRunner$"
+  private val bridgeClasses = Set[String](
   )
 
 
