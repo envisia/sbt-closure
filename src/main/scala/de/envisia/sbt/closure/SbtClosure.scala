@@ -7,6 +7,7 @@ import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
 import com.typesafe.sbt.web._
 import com.typesafe.sbt.web.incremental._
+import de.envisia.closure.SbtClosureCommandLineRunner
 import sbt.Keys._
 import sbt._
 
@@ -44,27 +45,17 @@ object SbtClosure extends AutoPlugin {
   // java -jar ~/Downloads/compiler-latest/compiler.jar --common_js_entry_module index.module.js
   // --angular_pass --js src/app/index.module.js --js src/app/components/auth-service/auth-service.js
   // --js src/app/components/storage-service/storage-service.js
-  private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], log: Logger): Unit = {
+  private def invokeCompiler(src: Seq[String], target: File, flags: Seq[String], log: Logger): Unit = {
     val opts = src ++ Seq(s"--js_output_file=${target.getAbsolutePath}") ++
       flags.filterNot(s => s.trim.startsWith("--js=") || s.trim.startsWith("--js_output_file="))
     try {
-      val files = src.map { v =>
-        val file = v.asFile
-        val source = Source.fromFile(file)
-        val content = source.getLines().mkString
-        source.close()
-        (file, content)
-      }
 
-      val compiler = new SbtClosureLoader(src.map(_.asFile))
+
+      val compiler = new SbtClosureCommandLineRunner(opts.toArray)
       val runner = true
       log.info(s"Run Compiler: $runner")
       if (runner) {
-        val res = compiler.compile
-        println(res)
-        val out = new PrintStream(new FileOutputStream(target))
-        out.print(res)
-        out.close()
+        compiler.compile()
       } else {
         sys.error("Invalid closure compiler configuration, check flags")
       }
@@ -123,7 +114,7 @@ object SbtClosure extends AutoPlugin {
             val compilationResults: Map[File, Try[File]] = {
               if (modifiedSources.nonEmpty) {
                 try {
-                  invokeCompiler(sources, target, flags, streams.value.log)
+                  invokeCompiler(sources.map(file => s"--js=${file.getAbsolutePath}"), target, flags, streams.value.log)
                   modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
                 } catch {
                   case e: Exception => modifiedSources.map(inputFile => inputFile -> Failure(e)).toMap

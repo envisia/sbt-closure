@@ -4,7 +4,7 @@ organization := "de.envisia.sbt"
 
 name := "sbt-closure"
 
-version := "0.0.11-M127"
+version := "0.0.11-M129"
 
 scalaVersion := "2.10.6"
 
@@ -19,7 +19,9 @@ lazy val closureWrapper = (project in file("closure-wrapper")).settings(
   assemblyJarName in assembly := "closure-wrapper.jar",
   libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
 ).disablePlugins(BintrayPlugin)
-// libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
+
+
+libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
 // ScalaJS 0.6.6
 // libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20130603"
 
