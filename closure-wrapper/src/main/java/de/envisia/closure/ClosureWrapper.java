@@ -17,14 +17,18 @@ public class ClosureWrapper extends CommandLineRunner {
     public static void main(String[] args) {
         List<SourceFile> externs = Collections.emptyList();
         List<SourceFile> inputs = Collections.singletonList(
-                new SourceFile("default.js"));
+                SourceFile.fromFile("default.js"));
+
 
         CompilerOptions options = new CompilerOptions();
+
         CompilationLevel.SIMPLE_OPTIMIZATIONS.setOptionsForCompilationLevel(options);
         options.setAngularPass(true);
+        options.setLanguageIn(CompilerOptions.LanguageMode.ECMASCRIPT6);
 
         com.google.javascript.jscomp.Compiler compiler = new com.google.javascript.jscomp.Compiler();
         Result result = compiler.compile(externs, inputs, options);
+
         String s = compiler.toSource();
     }
 

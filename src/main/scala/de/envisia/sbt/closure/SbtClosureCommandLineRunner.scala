@@ -1,32 +1,90 @@
 package de.envisia.sbt.closure
 
 import java.io.File
+import java.lang.reflect.InvocationTargetException
 import java.net.URLClassLoader
-import java.util.jar.JarFile
+import java.util
+
+import scala.collection.JavaConversions._
 
 
-private class SbtClosureCommandLineRunner(args: Array[String]) {
-  val resource = this.getClass.getResource("/closure-wrapper.jar")
+private class SbtClosureCommandLineRunner(src: Seq[(File, String)]) {
+  val resource = this.getClass.getResource("/compiler-20151216.jar")
   println(resource)
   val resources = Array(resource)
 
-  val child: URLClassLoader = new URLClassLoader(resources, this.getClass.getClassLoader)
+  val parent = this.getClass.getClassLoader
+  val closureLoader = new URLClassLoader(resources, null)
+  val child = new SbtClosureClassLoader(closureLoader)
 
-  val classToLoad: Class[_] = child.loadClass("de.envisia.closure.ClosureWrapper")
+  val sourceFile: Class[_] = child.loadClass("com.google.javascript.jscomp.SourceFile")
+  val compiler: Class[_] = child.loadClass("com.google.javascript.jscomp.Compiler")
+  val compilerOptions: Class[_] = child.loadClass("com.google.javascript.jscomp.CompilerOptions")
+  val languageMode: Class[_] = child.loadClass("com.google.javascript.jscomp.CompilerOptions$LanguageMode")
+  val compilationLevel: Class[_] = child.loadClass("com.google.javascript.jscomp.CompilationLevel")
+  val result: Class[_] = child.loadClass("com.google.javascript.jscomp.Result")
 
-  val constructor = classToLoad.getConstructor(args.getClass)
+  val compilerOptionsInstance = compilerOptions.newInstance()
 
-  val instance = constructor.newInstance(args)
+  val languageModeEnum = languageMode.getEnumConstants
+  val ECMASCRIPT5 = languageModeEnum(1)
+  val ECMASCRIPT6 = languageModeEnum(3)
 
-  val method1 = classToLoad.getDeclaredMethod("compile")
-  val method2 = classToLoad.getDeclaredMethod("shouldRunCompiler")
+  val setLanguageIn = compilerOptions.getDeclaredMethod("setLanguageIn", languageMode)
+  val setLanguageOut = compilerOptions.getDeclaredMethod("setLanguageOut", languageMode)
 
-  def compile(): Unit = {
-    method1.invoke(instance)
+  setLanguageIn.invoke(compilerOptionsInstance, ECMASCRIPT6)
+  setLanguageOut.invoke(compilerOptionsInstance, ECMASCRIPT5)
+
+  val compilationLevels = compilationLevel.getEnumConstants
+  val second = compilationLevels.apply(1)
+  val setOptionsForCompilationLevel = second.getClass.getDeclaredMethod("setOptionsForCompilationLevel", compilerOptions)
+  setOptionsForCompilationLevel.invoke(second, compilerOptionsInstance.asInstanceOf[AnyRef])
+
+
+  val sourceFileConstructor = sourceFile.getConstructor(classOf[String])
+  val sourceFileFromCode = sourceFile.getDeclaredMethod("fromCode", classOf[String], classOf[String])
+  sourceFileFromCode.setAccessible(true)
+
+  val emptySources: java.util.List[AnyRef] = util.Collections.emptyList()
+
+
+  val setAngularPass = compilerOptions.getDeclaredMethod("setAngularPass", classOf[Boolean])
+  setAngularPass.invoke(compilerOptionsInstance, true: java.lang.Boolean)
+
+  val sources: java.util.List[Any] = src.map { case (file, content) =>
+    sourceFileFromCode.invoke(null, file.getAbsolutePath, content)
+  }
+
+  val compilerInstance = compiler.newInstance()
+  val compileMethod = compiler.getDeclaredMethod("compile", classOf[java.util.List[_]], classOf[java.util.List[_]], compilerOptions)
+  val initMethod = compiler.getDeclaredMethod("init", classOf[java.util.List[_]], classOf[java.util.List[_]], compilerOptions)
+  val checkMethod = compiler.getDeclaredMethod("check")
+
+  def compile: String = {
+    initMethod.invoke(compilerInstance, emptySources, sources, compilerOptionsInstance.asInstanceOf[AnyRef])
+
+    try {
+      // val isValid = checkMethod.invoke(compilerInstance)
+      // println(s"Valid: $isValid")
+
+      val result = compileMethod.invoke(compilerInstance, emptySources, sources, compilerOptionsInstance.asInstanceOf[AnyRef])
+      val toSource = compiler.getDeclaredMethod("toSource")
+      val data = toSource.invoke(compilerInstance).asInstanceOf[String]
+
+      data
+    } catch {
+      case e: InvocationTargetException =>
+
+        println(s"Cause: ${e.getCause}")
+        e.getCause.printStackTrace()
+        println("--")
+        ""
+    }
   }
 
   def shouldRunCompiler(): Boolean = {
-    method2.invoke(instance).asInstanceOf[Boolean]
+    true
   }
 
 }

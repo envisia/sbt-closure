@@ -1,5 +1,6 @@
 package de.envisia.sbt.closure
 
+import java.io.{FileOutputStream, PrintStream}
 import java.time.{Duration, Instant}
 
 import com.typesafe.sbt.web.Import.WebKeys._
@@ -9,6 +10,7 @@ import com.typesafe.sbt.web.incremental._
 import sbt.Keys._
 import sbt._
 
+import scala.io.Source
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
@@ -42,17 +44,30 @@ object SbtClosure extends AutoPlugin {
   // java -jar ~/Downloads/compiler-latest/compiler.jar --common_js_entry_module index.module.js
   // --angular_pass --js src/app/index.module.js --js src/app/components/auth-service/auth-service.js
   // --js src/app/components/storage-service/storage-service.js
-  private def invokeCompiler(src: Seq[String], target: File, flags: Seq[String], log: Logger): Unit = {
+  private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], log: Logger): Unit = {
     val opts = src ++ Seq(s"--js_output_file=${target.getAbsolutePath}") ++
       flags.filterNot(s => s.trim.startsWith("--js=") || s.trim.startsWith("--js_output_file="))
     try {
-      val compiler = new SbtClosureCommandLineRunner(opts.toArray)
+      val files = src.map { v =>
+        val file = v.asFile
+        val source = Source.fromFile(file)
+        val content = source.getLines().mkString
+        source.close()
+        (file, content)
+      }
+
+      val compiler = new SbtClosureCommandLineRunner(files)
       val runner = compiler.shouldRunCompiler()
       log.info(s"Run Compiler: $runner")
-      if (runner)
-        compiler.compile()
-      else
+      if (runner) {
+        val res = compiler.compile
+        println(res)
+        val out = new PrintStream(new FileOutputStream(target))
+        out.print(res)
+        out.close()
+      } else {
         sys.error("Invalid closure compiler configuration, check flags")
+      }
     } catch {
       case e: Exception => log.error(s"Exception: $e"); e.printStackTrace()
     }
@@ -82,7 +97,6 @@ object SbtClosure extends AutoPlugin {
       // val webpackJsShell = (webJarsNodeModulesDirectory in Plugin).value / "webpack" / "bin" / "webpack.js"
       // val executeWebpack = SbtJsTask
 
-      val files = sources.map { file => s"--js=${file.getAbsolutePath}" }
       val flags = Seq(
         s"--compilation_level=$compilationLevel",
         "--common_js_entry_module=index.module",
@@ -109,7 +123,7 @@ object SbtClosure extends AutoPlugin {
             val compilationResults: Map[File, Try[File]] = {
               if (modifiedSources.nonEmpty) {
                 try {
-                  invokeCompiler(files, target, flags, streams.value.log)
+                  invokeCompiler(sources, target, flags, streams.value.log)
                   modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
                 } catch {
                   case e: Exception => modifiedSources.map(inputFile => inputFile -> Failure(e)).toMap
