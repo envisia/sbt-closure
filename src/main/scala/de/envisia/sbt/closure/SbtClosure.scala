@@ -100,8 +100,8 @@ object SbtClosure extends AutoPlugin {
       val sm = if (generateSourceMaps.value) {
         Seq(
           s"--create_source_map=${sourceMapTarget.getAbsolutePath}",
-          s"--source_map_location_mapping=${sourceDir.getParent}| ",
-          s"--source_map_location_mapping=$targetDir| "
+          s"--source_map_location_mapping=${sourceDir.getParent}|/assets",
+          s"--source_map_location_mapping=$targetDir|/assets"
         )
       } else Seq()
 
