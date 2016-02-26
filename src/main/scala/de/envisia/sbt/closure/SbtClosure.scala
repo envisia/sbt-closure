@@ -1,7 +1,8 @@
 package de.envisia.sbt.closure
 
-import java.io.{FileOutputStream, PrintStream}
+import java.io.{BufferedWriter, FileWriter}
 import java.time.{Duration, Instant}
+import java.util.Optional
 
 import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
@@ -10,16 +11,14 @@ import com.typesafe.sbt.web.incremental._
 import sbt.Keys._
 import sbt._
 
-import scala.collection.JavaConversions._
-import scala.io.Source
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
+
 
 object SbtClosure extends AutoPlugin {
   override def requires: Plugins = SbtWeb
 
   override def trigger: PluginTrigger = AllRequirements
-
 
   object autoImport {
 
@@ -44,33 +43,40 @@ object SbtClosure extends AutoPlugin {
   // java -jar ~/Downloads/compiler-latest/compiler.jar --common_js_entry_module index.module.js
   // --angular_pass --js src/app/index.module.js --js src/app/components/auth-service/auth-service.js
   // --js src/app/components/storage-service/storage-service.js
-  private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], log: Logger): Unit = {
-    val opts = src ++ Seq(s"--js_output_file=${target.getAbsolutePath}") ++
-      flags.filterNot(s => s.trim.startsWith("--js=") || s.trim.startsWith("--js_output_file="))
-    try {
-      val files = src.map { v =>
-        val file = v.asFile
-        val source = Source.fromFile(file)
-        val content = source.getLines().mkString
-        source.close()
-        (file, content)
-      }
+  private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], sourceMap: Optional[String]): Unit = {
+    val opts = src.map(_.toString).map(v => s"--js=$v") ++ flags ++ Seq(s"--js_output_file=${target.toString}")
 
-      val compiler = new SbtClosureLoader(src.map(_.asFile))
-      val runner = true
-      log.info(s"Run Compiler: $runner")
-      if (runner) {
-        val res = compiler.compile
-        println(res)
-        val out = new PrintStream(new FileOutputStream(target))
-        out.print(res)
-        out.close()
-      } else {
-        sys.error("Invalid closure compiler configuration, check flags")
-      }
-    } catch {
-      case e: Exception => log.error(s"Exception: $e"); e.printStackTrace()
+    val parentDir = target.getParentFile
+    if (!parentDir.exists()) {
+      parentDir.mkdirs()
     }
+
+    val commandLineRunner = new ClosureCommandLineRunner(opts.toArray)
+    commandLineRunner.compile(target, sourceMap)
+
+
+    //    if (!target.exists()) {
+    //      target.createNewFile()
+    //    }
+    //    if (!sourceMapTarget.exists() && withSourceMaps) {
+    //      sourceMapTarget.createNewFile()
+    //    }
+    //
+    //    val compiler = new ClosureRunner(List(rootDir.toString), src, sourceMapTarget.toString, rootDir.getParentFile, withSourceMaps)
+    //
+    //    val res = compiler.compile()
+    //    val out = new PrintStream(new FileOutputStream(target))
+    //    out.println(res)
+    //    if (withSourceMaps) {
+    //      out.println(s"//# sourceMappingURL=main.min.js.map")
+    //    }
+    //    out.close()
+    //
+    //    if (withSourceMaps) {
+    //      val sourceMapOut = new PrintStream(new FileOutputStream(sourceMapTarget))
+    //      compiler.sourceMap(sourceMapOut, "main.min.js.map")
+    //      sourceMapOut.close()
+    //    }
   }
 
   val baseSbtClosureSettings = Seq(
@@ -79,33 +85,34 @@ object SbtClosure extends AutoPlugin {
     managedResourceDirectories += (resourceManaged in closure in Assets).value,
     resourceManaged in closure in Assets := webTarget.value / "closure" / "main",
     resourceGenerators in Assets <+= closure in Assets,
+
     closure in Assets := Def.task {
-      val sourceDir = (sourceDirectory in Assets).value
+      val sourceDir = (resourceDirectory in Assets).value / "app"
       val targetDir = (resourceManaged in closure in Assets).value
 
-      val target = targetDir / "app.min.js"
-      val sourceMapTarget = targetDir / "app.min.js.map"
-
-      // SIMPLE_OPTIMIZATIONS, ADVANCED_OPTIMIZATIONS
-      // val compilationLevel = if (advancedCompilation.value) "ADVANCED" else "SIMPLE"
-      val compilationLevel = if (advancedCompilation.value) "ADVANCED_OPTIMIZATIONS" else "SIMPLE_OPTIMIZATIONS"
+      val target = targetDir / "main.min.js"
+      val sourceMapName = "main.min.map"
+      val sourceMapTarget = targetDir / sourceMapName
+      val compilationLevel = if (advancedCompilation.value) "ADVANCED" else "SIMPLE"
 
       val sources = (sourceDir ** ((includeFilter in closure in Assets).value -- (excludeFilter in closure in Assets).value)).get
 
-      // val query = """--module-bind "js=babel?presets=es2015" """.trim
-      // val nodeModulePaths = (nodeModuleDirectories in Plugin).value.map(_.getPath)
-      // val webpackJsShell = (webJarsNodeModulesDirectory in Plugin).value / "webpack" / "bin" / "webpack.js"
-      // val executeWebpack = SbtJsTask
+      val sm = if (generateSourceMaps.value) {
+        Seq(
+          s"--create_source_map=${sourceMapTarget.getAbsolutePath}",
+          s"--source_map_location_mapping=${sourceDir.getParent}| ",
+          s"--source_map_location_mapping=$targetDir| "
+        )
+      } else Seq()
 
       val flags = Seq(
         s"--compilation_level=$compilationLevel",
-        "--common_js_entry_module=index.module",
         "--angular_pass",
-        // "--formatting=PRETTY_PRINT",
-        s"--create_source_map=${sourceMapTarget.getAbsolutePath}",
         "--language_in=ECMASCRIPT6",
-        "--language_out=ECMASCRIPT5"
-      )
+        "--language_out=ECMASCRIPT5_STRICT"
+      ) ++ sm
+
+      val optionalSourceMap = if (generateSourceMaps.value) Optional.of(sourceMapName) else Optional.empty[String]()
 
       if (sources.nonEmpty) {
         implicit val fileHasherIncludingOptions: OpInputHasher[File] =
@@ -116,14 +123,13 @@ object SbtClosure extends AutoPlugin {
             val startInstant = Instant.now
 
             if (modifiedSources.nonEmpty) {
-              streams.value.log.info(s"Closure compiling on ${modifiedSources.size} source(s")
+              streams.value.log.info(s"Closure compiling on ${modifiedSources.size} source(s)")
             }
-
 
             val compilationResults: Map[File, Try[File]] = {
               if (modifiedSources.nonEmpty) {
                 try {
-                  invokeCompiler(sources, target, flags, streams.value.log)
+                  invokeCompiler(sources, target, flags, optionalSourceMap)
                   modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
                 } catch {
                   case e: Exception => modifiedSources.map(inputFile => inputFile -> Failure(e)).toMap
@@ -140,14 +146,13 @@ object SbtClosure extends AutoPlugin {
 
             val duration = Duration.between(startInstant, Instant.now).toMillis
 
-            val createdFiles = Seq(target, sourceMapTarget)
+            val createdFiles = if (generateSourceMaps.value) Seq(target, sourceMapTarget) else Seq(target)
             if (modifiedSources.nonEmpty) {
               streams.value.log.info(s"Closure compilation done in $duration ms. ${createdFiles.size} resulting js files(s)")
             }
 
             (opResults, createdFiles)
         }(fileHasherIncludingOptions)
-
 
         (results._1 ++ results._2.toSet).toSeq
       } else {

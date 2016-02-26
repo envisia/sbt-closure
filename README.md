@@ -11,17 +11,6 @@ https://github.com/irundaia/sbt-sassify
 
 **It works works totally different than sbt-closure.**
 
-Thanks
-======
+Currently this is in a really early stage, so stay tuned.
 
-To https://github.com/gzm0 for his great help on the classloader work.
-
-License
-=======
-This code is licensed under the [MIT License].
-
-[sbt-web]:https://github.com/sbt/sbt-web
-[official documentation page]:https://developers.google.com/closure/compiler/docs/gettingstarted_app
-[Google’s Closure Compiler]:https://developers.google.com/closure/compiler/
-[MIT License]:http://opensource.org/licenses/MIT
-[Sonatype releases]:https://oss.sonatype.org/content/repositories/releases/
+sbt clean web-assets:assets
