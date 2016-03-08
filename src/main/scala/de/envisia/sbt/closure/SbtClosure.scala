@@ -39,10 +39,6 @@ object SbtClosure extends AutoPlugin {
     closureDebug := false
   )
 
-  // Should return something like:
-  // java -jar ~/Downloads/compiler-latest/compiler.jar --common_js_entry_module index.module.js
-  // --angular_pass --js src/app/index.module.js --js src/app/components/auth-service/auth-service.js
-  // --js src/app/components/storage-service/storage-service.js
   private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], sourceMap: Optional[String]): Unit = {
     val opts = src.map(_.toString).map(v => s"--js=$v") ++ flags ++ Seq(s"--js_output_file=${target.toString}")
 
@@ -53,30 +49,6 @@ object SbtClosure extends AutoPlugin {
 
     val commandLineRunner = new ClosureCommandLineRunner(opts.toArray)
     commandLineRunner.compile(target, sourceMap)
-
-
-    //    if (!target.exists()) {
-    //      target.createNewFile()
-    //    }
-    //    if (!sourceMapTarget.exists() && withSourceMaps) {
-    //      sourceMapTarget.createNewFile()
-    //    }
-    //
-    //    val compiler = new ClosureRunner(List(rootDir.toString), src, sourceMapTarget.toString, rootDir.getParentFile, withSourceMaps)
-    //
-    //    val res = compiler.compile()
-    //    val out = new PrintStream(new FileOutputStream(target))
-    //    out.println(res)
-    //    if (withSourceMaps) {
-    //      out.println(s"//# sourceMappingURL=main.min.js.map")
-    //    }
-    //    out.close()
-    //
-    //    if (withSourceMaps) {
-    //      val sourceMapOut = new PrintStream(new FileOutputStream(sourceMapTarget))
-    //      compiler.sourceMap(sourceMapOut, "main.min.js.map")
-    //      sourceMapOut.close()
-    //    }
   }
 
   val baseSbtClosureSettings = Seq(

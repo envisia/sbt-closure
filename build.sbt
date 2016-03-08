@@ -4,17 +4,15 @@ organization := "de.envisia.sbt"
 
 name := "sbt-closure"
 
-version := "0.3.0-M5"
+version := "0.3.0-M6"
 
 scalaVersion := "2.10.6"
 
 lazy val root = (project in file(".")).settings()
 
-libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20151216"
+libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20160208"
 
 addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.3.0")
-
-addSbtPlugin("com.typesafe.sbt" % "sbt-js-engine" % "1.1.3")
 
 resolvers ++= Seq(
   "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
