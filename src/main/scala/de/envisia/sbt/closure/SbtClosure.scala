@@ -52,7 +52,7 @@ object SbtClosure extends AutoPlugin {
   }
 
   val baseSbtClosureSettings = Seq(
-    includeFilter in closure := "*.js",
+    includeFilter in closure := "*.js" || "*.ts",
     excludeFilter in closure := HiddenFileFilter || "_*",
     managedResourceDirectories += (resourceManaged in closure in Assets).value,
     resourceManaged in closure in Assets := webTarget.value / "closure" / "main",
@@ -71,6 +71,8 @@ object SbtClosure extends AutoPlugin {
 
       val sm = if (generateSourceMaps.value) {
         Seq(
+          s"--entry_point=${sourceDir.toString}/main.js",
+          s"--js_module_root=${sourceDir.toString}",
           s"--create_source_map=${sourceMapTarget.getAbsolutePath}",
           s"--source_map_location_mapping=${sourceDir.getParent}|/assets",
           s"--source_map_location_mapping=$targetDir|/assets"
@@ -80,7 +82,7 @@ object SbtClosure extends AutoPlugin {
       val flags = Seq(
         s"--compilation_level=$compilationLevel",
         "--angular_pass",
-        "--language_in=ECMASCRIPT6",
+        "--language_in=ECMASCRIPT6_TYPED",
         "--language_out=ECMASCRIPT5_STRICT"
       ) ++ sm
 

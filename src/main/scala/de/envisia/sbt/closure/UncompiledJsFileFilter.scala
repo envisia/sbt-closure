@@ -10,5 +10,5 @@ class UncompiledJsFileFilter(suffix: String) extends FileFilter {
     // not already compiled
     !file.getName.endsWith(suffix) &&
     // a JS file
-    file.getName.endsWith(".js")
+        (file.getName.endsWith(".js") || file.getName.endsWith(".ts"))
 }
