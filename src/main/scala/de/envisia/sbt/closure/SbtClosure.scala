@@ -1,7 +1,6 @@
 package de.envisia.sbt.closure
 
-import java.io.{BufferedWriter, FileWriter}
-import java.time.{Duration, Instant}
+import java.time.{ Duration, Instant }
 import java.util.Optional
 
 import com.typesafe.sbt.web.Import.WebKeys._
@@ -12,7 +11,7 @@ import sbt.Keys._
 import sbt._
 
 import scala.language.implicitConversions
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 
 object SbtClosure extends AutoPlugin {
@@ -102,12 +101,8 @@ object SbtClosure extends AutoPlugin {
 
             val compilationResults: Map[File, Try[File]] = {
               if (modifiedSources.nonEmpty) {
-                try {
-                  invokeCompiler(sources, target, flags, optionalSourceMap)
-                  modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
-                } catch {
-                  case e: Exception => modifiedSources.map(inputFile => inputFile -> Failure(e)).toMap
-                }
+                invokeCompiler(sources, target, flags, optionalSourceMap)
+                modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
               } else {
                 Map()
               }
