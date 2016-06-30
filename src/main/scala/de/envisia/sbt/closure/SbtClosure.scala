@@ -37,7 +37,7 @@ object SbtClosure extends AutoPlugin {
     closureDebug := false
   )
 
-  private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], sourceMap: Option[String]): Unit = {
+  private def invokeCompiler(classesDir: File, src: Seq[File], target: File, flags: Seq[String], sourceMap: Option[String]): Unit = {
     val opts = src.map(_.toString).map(v => s"--js=$v") ++ flags ++ Seq(s"--js_output_file=${target.toString}")
 
     val parentDir = target.getParentFile
@@ -45,7 +45,8 @@ object SbtClosure extends AutoPlugin {
       parentDir.mkdirs()
     }
 
-    Closure.run(opts.toArray, target, sourceMap)
+    val closure = new Closure(classesDir)
+    closure.run(opts.toArray, target, sourceMap)
   }
 
   val baseSbtClosureSettings = Seq(
@@ -58,6 +59,7 @@ object SbtClosure extends AutoPlugin {
     closure in Assets := Def.task {
       val sourceDir = (resourceDirectory in Assets).value / "app"
       val targetDir = (resourceManaged in closure in Assets).value
+      val classesDir = (classDirectory in Compile).value
 
       val target = targetDir / "main.min.js"
       val sourceMapName = "main.min.map"
@@ -99,7 +101,7 @@ object SbtClosure extends AutoPlugin {
 
             val compilationResults: Map[File, Try[File]] = {
               if (modifiedSources.nonEmpty) {
-                invokeCompiler(sources, target, flags, optionalSourceMap)
+                invokeCompiler(classesDir, sources, target, flags, optionalSourceMap)
                 modifiedSources.map(inputFile => inputFile -> Success(inputFile)).toMap
               } else {
                 Map()
