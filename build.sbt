@@ -4,17 +4,13 @@ organization := "de.envisia.sbt"
 
 name := "sbt-closure"
 
-version := "0.4.1"
+version := "0.5.0"
 
 scalaVersion := "2.10.6"
 
 lazy val root = (project in file(".")).settings()
 
-// Closure Compiler needs Guava
-libraryDependencies += "com.google.guava" % "guava" % "19.0"
-libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20160619"
-
-addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.3.0")
+addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.4.0")
 
 resolvers ++= Seq(
   "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",

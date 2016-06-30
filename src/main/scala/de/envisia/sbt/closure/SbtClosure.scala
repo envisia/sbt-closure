@@ -1,7 +1,6 @@
 package de.envisia.sbt.closure
 
 import java.time.{ Duration, Instant }
-import java.util.Optional
 
 import com.typesafe.sbt.web.Import.WebKeys._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
@@ -38,7 +37,7 @@ object SbtClosure extends AutoPlugin {
     closureDebug := false
   )
 
-  private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], sourceMap: Optional[String]): Unit = {
+  private def invokeCompiler(src: Seq[File], target: File, flags: Seq[String], sourceMap: Option[String]): Unit = {
     val opts = src.map(_.toString).map(v => s"--js=$v") ++ flags ++ Seq(s"--js_output_file=${target.toString}")
 
     val parentDir = target.getParentFile
@@ -46,8 +45,7 @@ object SbtClosure extends AutoPlugin {
       parentDir.mkdirs()
     }
 
-    val commandLineRunner = new ClosureCommandLineRunner(opts.toArray)
-    commandLineRunner.compile(target, sourceMap)
+    Closure.run(opts.toArray, target, sourceMap)
   }
 
   val baseSbtClosureSettings = Seq(
@@ -85,7 +83,7 @@ object SbtClosure extends AutoPlugin {
         "--language_out=ECMASCRIPT5_STRICT"
       ) ++ sm
 
-      val optionalSourceMap = if (generateSourceMaps.value) Optional.of(sourceMapName) else Optional.empty[String]()
+      val optionalSourceMap = if (generateSourceMaps.value) Option(sourceMapName) else None
 
       if (sources.nonEmpty) {
         implicit val fileHasherIncludingOptions: OpInputHasher[File] =
