@@ -7,11 +7,13 @@ import org.apache.commons.io.FileUtils
 
 class Closure(classesDirectory: File) {
 
+  private val closureName = "closure-compiler-v20160713.jar"
+
   // To have a classloader load a JAR file it can't be inside another jar so we first need to
   // copy the file to a sane directory and then load the jar file from there.
   // This also means we cache that jar file there since else every compile would copy it.
-  val cachedFile = classesDirectory.toPath.resolve("cached-closure-compiler-v20160619.jar").toFile
-  val url = this.getClass.getResource("/closure-compiler-v20160619.jar")
+  val cachedFile = classesDirectory.toPath.resolve(s"cached-$closureName").toFile
+  val url = this.getClass.getResource(s"/$closureName")
   if (!cachedFile.exists()) {
     FileUtils.copyURLToFile(url, cachedFile)
   }
