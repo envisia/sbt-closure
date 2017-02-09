@@ -1,5 +1,4 @@
-import demo from './demo/demo';
-import log from './other.ts';
+import log from './demo/demo';
 
 console.log('XYZ');
 

@@ -7,7 +7,7 @@ import org.apache.commons.io.FileUtils
 
 class Closure(classesDirectory: File) {
 
-  private val closureName = "closure-compiler-v20160713.jar"
+  private val closureName = "closure-compiler-v20170124.jar"
 
   // To have a classloader load a JAR file it can't be inside another jar so we first need to
   // copy the file to a sane directory and then load the jar file from there.
