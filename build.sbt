@@ -1,18 +1,181 @@
-sbtPlugin := true
+scalaVersion := "2.10.6" // it's a sbt project
 
-organization := "de.envisia.sbt"
+val javacSettings = Seq(
+  "-source", "1.8",
+  "-target", "1.8",
+  "-Xlint:deprecation",
+  "-Xlint:unchecked"
+)
 
-name := "sbt-closure"
+val internal = "envisia" at "https://maven.envisia.de/internal"
+val internalSnapshots = "envisia-snapshots" at "https://maven.envisia.de/internal-snapshots"
 
-version := "0.7.0"
+lazy val commonSettings = Seq(
+  organization := "de.envisia",
+  scalaVersion := "2.10.6",
+  scalacOptions in(Compile, doc) ++= Seq(
+    "-deprecation",
+    "-encoding", "UTF-8",
+    "-feature",
+    "-unchecked",
 
-scalaVersion := "2.10.6"
+    "-Ywarn-nullary-unit",
+    "-Xfatal-warnings",
+    "-Xlint",
+    "-Ywarn-dead-code"
+  ),
+  javacOptions in(Compile, doc) ++= javacSettings,
+  javacOptions in Test ++= javacSettings,
+  javacOptions in IntegrationTest ++= javacSettings,
+  pomIncludeRepository := { _ => false },
+  publishTo := Some(if (isSnapshot.value) internalSnapshots else internal)
+)
 
-lazy val root = (project in file(".")).settings()
+val disableDocs = Seq[Setting[_]](
+  sources in(Compile, doc) := Seq.empty,
+  publishArtifact in(Compile, packageDoc) := false
+)
+
+val disablePublishing = Seq[Setting[_]](
+  publishArtifact := false,
+  // The above is enough for Maven repos but it doesn't prevent publishing of ivy.xml files
+  publish := {},
+  publishLocal := {},
+  com.typesafe.sbt.pgp.PgpKeys.publishSigned := {},
+  com.typesafe.sbt.pgp.PgpKeys.publishLocalSigned := {}
+)
+
+lazy val shadeAssemblySettings = commonSettings ++ Seq(
+  assemblyOption in assembly ~= (_.copy(includeScala = false)),
+  test in assembly := {},
+  assemblyOption in assembly ~= {
+    _.copy(includeScala = false)
+  },
+  assemblyJarName in assembly := {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((epoch, major)) =>
+        s"${name.value}.jar" // we are only shading java
+      case _ =>
+        sys.error("Cannot find valid scala version!")
+    }
+  },
+  target in assembly := {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      case Some((epoch, major)) =>
+        baseDirectory.value.getParentFile / "target" / s"$epoch.$major"
+      case _ =>
+        sys.error("Cannot find valid scala version!")
+    }
+  },
+  crossPaths := false // only useful for Java
+)
+
+import scala.xml.transform.{ RewriteRule, RuleTransformer }
+import scala.xml.{ Elem, NodeSeq, Node => XNode }
+
+def dependenciesFilter(n: XNode) = new RuleTransformer(new RewriteRule {
+  override def transform(n: XNode): NodeSeq = n match {
+    case e: Elem if e.label == "dependencies" => NodeSeq.Empty
+    case other => other
+  }
+}).transform(n).head
+
+//---------------------------------------------------------------
+// Shaded Clousre-Compiler implementation
+//---------------------------------------------------------------
+
+lazy val `shaded-closure-compiler` = project.in(file("shaded/closure-compiler"))
+    .settings(commonSettings)
+    .settings(shadeAssemblySettings)
+    .settings(
+      libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20170124",
+      name := "shaded-closure-compiler"
+    )
+    .settings(
+      //logLevel in assembly := Level.Debug,
+      assemblyShadeRules in assembly := Seq(
+        // FIXME:
+        ShadeRule.rename("com.google.**" -> "envisia.shaded.google.@0").inAll,
+        ShadeRule.rename("google.protobuf.**" -> "envisia.shaded.google.protobuf.@0").inAll,
+        ShadeRule.rename("jsinterop.**" -> "envisia.shaded.jsinterop.@0").inAll,
+        ShadeRule.rename("org.kohsuke.args4j.**" -> "envisia.shaded.org.kohsuke.args4j.@0").inAll
+      ),
+
+      // https://stackoverflow.com/questions/24807875/how-to-remove-projectdependencies-from-pom
+      // Remove dependencies from the POM because we have a FAT jar here.
+      makePomConfiguration := makePomConfiguration.value.copy(process = dependenciesFilter),
+      //ivyXML := <dependencies></dependencies>,
+      //ivyLoggingLevel := UpdateLogging.Full,
+      //logLevel := Level.Debug,
+
+      assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeBin = false, includeScala = false),
+      packageBin in Compile := assembly.value
+    )
+
+
+// Make the shaded version of AHC available downstream
+val shadedClosureSettings = Seq(
+  unmanagedJars in Compile += (packageBin in(`shaded-closure-compiler`, Compile)).value
+)
+
+
+//---------------------------------------------------------------
+// Shaded aggregate project
+//---------------------------------------------------------------
+
+lazy val shaded = Project(id = "shaded", base = file("shaded"))
+    .settings(disableDocs)
+    .settings(disablePublishing)
+    // needed for publishSigned, but is disabled
+    .settings(publishTo := Some("envisia-snapshots" at "https://maven.envisia.de/internal-snapshots"))
+    .aggregate(`shaded-closure-compiler`)
+    .disablePlugins(sbtassembly.AssemblyPlugin)
+
+def addShadedDeps(deps: Seq[xml.Node], node: xml.Node): xml.Node = {
+  node match {
+    case elem: xml.Elem =>
+      val child = if (elem.label == "dependencies") {
+        elem.child ++ deps
+      } else {
+        elem.child.map(addShadedDeps(deps, _))
+      }
+      xml.Elem(elem.prefix, elem.label, elem.attributes, elem.scope, false, child: _*)
+    case _ =>
+      node
+  }
+}
+
+lazy val `sbt-closure` = project.in(file("."))
+    .settings(commonSettings)
+    .settings(
+      organization := "de.envisia.sbt", // SBT Plugin
+      name := "sbt-closure",
+      sbtPlugin := true,
+      publishMavenStyle := true,
+      libraryDependencies += "commons-io" % "commons-io" % "2.5"
+    )
+    .settings(shadedClosureSettings)
+    .settings(
+      // This will not work if you do a publishLocal, because that uses ivy...
+      pomPostProcess := {
+        (node: xml.Node) =>
+          addShadedDeps(List(
+            <dependency>
+              <groupId>de.envisia.play</groupId>
+              <artifactId>shaded-closure-compiler</artifactId>
+              <version>
+                {version.value}
+              </version>
+            </dependency>
+          ), node)
+      }
+    )
+    .aggregate(`shaded`)
+    .disablePlugins(sbtassembly.AssemblyPlugin)
 
 addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.3.0")
 
-libraryDependencies += "commons-io" % "commons-io" % "2.5"
+
 
 resolvers ++= Seq(
   "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
@@ -22,8 +185,6 @@ resolvers ++= Seq(
   Resolver.mavenLocal
 )
 
-publishMavenStyle := false
-
 scriptedSettings
 
 scriptedLaunchOpts ++= Seq(
@@ -32,25 +193,24 @@ scriptedLaunchOpts ++= Seq(
   s"-Dproject.version=${version.value}"
 )
 
-bintrayOrganization := Some("envisia")
-
-pomExtra := (
-  <url>https://github.com/envisia/sbt-closure</url>
-    <licenses>
-      <license>
-        <name>MIT</name>
-        <url>http://opensource.org/licenses/MIT</url>
-        <distribution>repo</distribution>
-      </license>
-    </licenses>
-    <scm>
-      <url>git@github.com:envisia/sbt-closure.git</url>
-      <connection>scm:git:git@github.com:envisia/sbt-closure.git</connection>
-    </scm>
-    <developers>
-      <developer>
-        <id>envisia</id>
-        <name>Christian Schmitt</name>
-        <url>https://www.envisia.de</url>
-      </developer>
-    </developers>)
+pomExtra in Global := (
+    <url>https://github.com/envisia/sbt-closure</url>
+        <licenses>
+          <license>
+            <name>MIT</name>
+            <url>http://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+          </license>
+        </licenses>
+        <scm>
+          <url>git@github.com:envisia/sbt-closure.git</url>
+          <connection>scm:git:git@github.com:envisia/sbt-closure.git</connection>
+        </scm>
+        <developers>
+          <developer>
+            <id>envisia</id>
+            <name>Christian Schmitt</name>
+            <url>https://www.envisia.de</url>
+          </developer>
+        </developers>
+    )
