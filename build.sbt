@@ -27,6 +27,7 @@ lazy val commonSettings = Seq(
   javacOptions in(Compile, doc) ++= javacSettings,
   javacOptions in Test ++= javacSettings,
   javacOptions in IntegrationTest ++= javacSettings,
+  publishMavenStyle := true,
   pomIncludeRepository := { _ => false },
   publishTo := Some(if (isSnapshot.value) internalSnapshots else internal)
 )
@@ -66,8 +67,7 @@ lazy val shadeAssemblySettings = commonSettings ++ Seq(
       case _ =>
         sys.error("Cannot find valid scala version!")
     }
-  },
-  crossPaths := false // only useful for Java
+  }
 )
 
 import scala.xml.transform.{ RewriteRule, RuleTransformer }
@@ -92,6 +92,8 @@ lazy val `shaded-closure-compiler` = project.in(file("shaded/closure-compiler"))
       name := "shaded-closure-compiler"
     )
     .settings(
+      // removes _2.10_0.13 from the artifact_id
+      crossPaths := false,
       //logLevel in assembly := Level.Debug,
       assemblyShadeRules in assembly := Seq(
         // FIXME:
@@ -150,8 +152,8 @@ lazy val `sbt-closure` = project.in(file("."))
     .settings(
       organization := "de.envisia.sbt", // SBT Plugin
       name := "sbt-closure",
+
       sbtPlugin := true,
-      publishMavenStyle := true,
       libraryDependencies += "commons-io" % "commons-io" % "2.5"
     )
     .settings(shadedClosureSettings)
@@ -161,11 +163,9 @@ lazy val `sbt-closure` = project.in(file("."))
         (node: xml.Node) =>
           addShadedDeps(List(
             <dependency>
-              <groupId>de.envisia.play</groupId>
+              <groupId>de.envisia</groupId>
               <artifactId>shaded-closure-compiler</artifactId>
-              <version>
-                {version.value}
-              </version>
+              <version>{version.value}</version>
             </dependency>
           ), node)
       }
@@ -174,8 +174,6 @@ lazy val `sbt-closure` = project.in(file("."))
     .disablePlugins(sbtassembly.AssemblyPlugin)
 
 addSbtPlugin("com.typesafe.sbt" %% "sbt-web" % "1.3.0")
-
-
 
 resolvers ++= Seq(
   "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases/",
@@ -192,25 +190,3 @@ scriptedLaunchOpts ++= Seq(
   "-XX:MaxPermSize=512M",
   s"-Dproject.version=${version.value}"
 )
-
-pomExtra in Global := (
-    <url>https://github.com/envisia/sbt-closure</url>
-        <licenses>
-          <license>
-            <name>MIT</name>
-            <url>http://opensource.org/licenses/MIT</url>
-            <distribution>repo</distribution>
-          </license>
-        </licenses>
-        <scm>
-          <url>git@github.com:envisia/sbt-closure.git</url>
-          <connection>scm:git:git@github.com:envisia/sbt-closure.git</connection>
-        </scm>
-        <developers>
-          <developer>
-            <id>envisia</id>
-            <name>Christian Schmitt</name>
-            <url>https://www.envisia.de</url>
-          </developer>
-        </developers>
-    )
