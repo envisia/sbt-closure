@@ -1,6 +1,8 @@
 sbt-closure
 ===========
 
+REMOVE POM CONSISTENSY CHECK
+
 [sbt-web] plugin which integrates with [Google’s Closure Compiler].
 
 This compiler is a fork of:
