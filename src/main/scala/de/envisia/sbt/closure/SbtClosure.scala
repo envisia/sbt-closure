@@ -57,7 +57,7 @@ object SbtClosure extends AutoPlugin {
     languageLevel := LanguageLevel.ECMASCRIPT6_TYPED,
     angularPass := true,
     moduleResolution := ModuleResolution.BROWSER,
-    entryPoint := (resourceDirectory in Assets).value / "app" / "main.js"
+    entryPoint := (resourceDirectory in closure in Assets).value / "app" / "main.js"
   )
 
   private class SbtClosureCommandLineRunner(args: Array[String]) extends CommandLineRunner(args) {
