@@ -32,10 +32,18 @@ object SbtClosure extends AutoPlugin {
         case object ECMASCRIPT6_STRICT extends LanguageLevel
         case object ECMASCRIPT6_TYPED extends LanguageLevel
       }
+      sealed trait ModuleResolution
+      object ModuleResolution {
+        case object BROWSER extends ModuleResolution
+        case object LEGACY extends ModuleResolution
+        case object NODE extends ModuleResolution
+      }
+      val entryPoint: SettingKey[File] = settingKey[File]("entry point for google closure")
       val closure: TaskKey[Seq[File]] = taskKey[Seq[File]]("Generate js files from es6 js files.")
       val angularPass: SettingKey[Boolean] = settingKey[Boolean]("angular pass option for closure")
       val compilationLevel: SettingKey[CompilationLevel] = settingKey[CompilationLevel]("compilation level of closure")
       val languageLevel: SettingKey[LanguageLevel] = settingKey[LanguageLevel]("language level of closure")
+      val moduleResolution: SettingKey[ModuleResolution] = settingKey[ModuleResolution]("resolution of modules")
       val generateSourceMaps: SettingKey[Boolean] = settingKey[Boolean]("Where or not source map files should be generated.")
     }
 
@@ -47,7 +55,9 @@ object SbtClosure extends AutoPlugin {
     compilationLevel := CompilationLevel.SIMPLE,
     generateSourceMaps := true,
     languageLevel := LanguageLevel.ECMASCRIPT6_TYPED,
-    angularPass := true
+    angularPass := true,
+    moduleResolution := ModuleResolution.BROWSER,
+    entryPoint := (resourceDirectory in Assets).value / "app" / "main.js"
   )
 
   private class SbtClosureCommandLineRunner(args: Array[String]) extends CommandLineRunner(args) {
@@ -100,12 +110,15 @@ object SbtClosure extends AutoPlugin {
       val pass = if (angularPass.value) Seq("--angular_pass") else Seq()
 
       val flags = Seq(
-        s"--entry_point=${sourceDir.toString}/main.js",
+        s"--entry_point=${entryPoint.value}",
         s"--js_module_root=${sourceDir.toString}",
         s"--compilation_level=$cLevel",
         s"--language_in=${languageLevel.value.toString}",
-        "--language_out=ECMASCRIPT5_STRICT"
+        "--language_out=ECMASCRIPT5_STRICT",
+        s"--module_resolution=${moduleResolution.value.toString}"
       ) ++ sm ++ pass
+
+      streams.value.log.debug(s"Closure Compiler Flags: $flags")
 
       val optionalSourceMap = if (generateSourceMaps.value) Option(sourceMapName) else None
 
