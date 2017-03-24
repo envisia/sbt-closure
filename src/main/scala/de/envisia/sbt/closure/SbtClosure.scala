@@ -26,8 +26,16 @@ object SbtClosure extends AutoPlugin {
         case object SIMPLE extends CompilationLevel
         case object ADVANCED extends CompilationLevel
       }
+      sealed trait LanguageLevel
+      object LanguageLevel {
+        case object ECMASCRIPT6 extends LanguageLevel
+        case object ECMASCRIPT6_STRICT extends LanguageLevel
+        case object ECMASCRIPT6_TYPED extends LanguageLevel
+      }
       val closure: TaskKey[Seq[File]] = taskKey[Seq[File]]("Generate js files from es6 js files.")
+      val angularPass: SettingKey[Boolean] = settingKey[Boolean]("angular pass option for closure")
       val compilationLevel: SettingKey[CompilationLevel] = settingKey[CompilationLevel]("compilation level of closure")
+      val languageLevel: SettingKey[LanguageLevel] = settingKey[LanguageLevel]("language level of closure")
       val generateSourceMaps: SettingKey[Boolean] = settingKey[Boolean]("Where or not source map files should be generated.")
     }
 
@@ -37,7 +45,9 @@ object SbtClosure extends AutoPlugin {
 
   override lazy val buildSettings: Seq[Setting[_]] = Seq(
     compilationLevel := CompilationLevel.SIMPLE,
-    generateSourceMaps := true
+    generateSourceMaps := true,
+    languageLevel := LanguageLevel.ECMASCRIPT6_TYPED,
+    angularPass := true
   )
 
   private class SbtClosureCommandLineRunner(args: Array[String]) extends CommandLineRunner(args) {
@@ -71,7 +81,7 @@ object SbtClosure extends AutoPlugin {
       val sourceMapName = "main.min.map"
       val sourceMapTarget = targetDir / sourceMapName
 
-      val level = compilationLevel.value match {
+      val cLevel = compilationLevel.value match {
         case CompilationLevel.WHITESPACE => "WHITESPACE_ONLY"
         case CompilationLevel.SIMPLE => "SIMPLE"
         case CompilationLevel.ADVANCED => "ADVANCED"
@@ -87,14 +97,15 @@ object SbtClosure extends AutoPlugin {
         )
       } else Seq()
 
+      val pass = if (angularPass.value) Seq("--angular_pass") else Seq()
+
       val flags = Seq(
         s"--entry_point=${sourceDir.toString}/main.js",
         s"--js_module_root=${sourceDir.toString}",
-        s"--compilation_level=$level",
-        "--angular_pass",
-        "--language_in=ECMASCRIPT6_TYPED",
+        s"--compilation_level=$cLevel",
+        s"--language_in=${languageLevel.value.toString}",
         "--language_out=ECMASCRIPT5_STRICT"
-      ) ++ sm
+      ) ++ sm ++ pass
 
       val optionalSourceMap = if (generateSourceMaps.value) Option(sourceMapName) else None
 
