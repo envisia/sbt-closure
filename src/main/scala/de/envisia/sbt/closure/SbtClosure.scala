@@ -38,7 +38,7 @@ object SbtClosure extends AutoPlugin {
         case object LEGACY extends ModuleResolution
         case object NODE extends ModuleResolution
       }
-      val entryPoint: SettingKey[File] = settingKey[File]("entry point for google closure")
+      val entryPoint: SettingKey[Option[File]] = settingKey[Option[File]]("entry point for google closure")
       val closure: TaskKey[Seq[File]] = taskKey[Seq[File]]("Generate js files from es6 js files.")
       val angularPass: SettingKey[Boolean] = settingKey[Boolean]("angular pass option for closure")
       val compilationLevel: SettingKey[CompilationLevel] = settingKey[CompilationLevel]("compilation level of closure")
@@ -57,7 +57,7 @@ object SbtClosure extends AutoPlugin {
     languageLevel := LanguageLevel.ECMASCRIPT6_TYPED,
     angularPass := true,
     moduleResolution := ModuleResolution.BROWSER,
-    entryPoint := (resourceDirectory in closure in Assets).value / "app" / "main.js"
+    entryPoint := None
   )
 
   private class SbtClosureCommandLineRunner(args: Array[String]) extends CommandLineRunner(args) {
@@ -109,8 +109,10 @@ object SbtClosure extends AutoPlugin {
 
       val pass = if (angularPass.value) Seq("--angular_pass") else Seq()
 
+      val finalEntryPoint = entryPoint.value.map(_.toString).getOrElse(((resourceDirectory in Assets).value / "app" / "main.js").toString)
+
       val flags = Seq(
-        s"--entry_point=${entryPoint.value}",
+        s"--entry_point=$finalEntryPoint",
         s"--js_module_root=${sourceDir.toString}",
         s"--compilation_level=$cLevel",
         s"--language_in=${languageLevel.value.toString}",
