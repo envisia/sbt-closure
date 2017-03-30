@@ -152,23 +152,20 @@ lazy val `sbt-closure` = project.in(file("."))
     .settings(
       organization := "de.envisia.sbt", // SBT Plugin
       name := "sbt-closure",
-
+      publishMavenStyle := false,
       sbtPlugin := true,
+      publishTo := {
+        if (isSnapshot.value) Some(Classpaths.sbtPluginSnapshots)
+        else Some(Resolver.url("internal-sbt", url("https://maven.envisia.de/internal-sbt/"))(Resolver.ivyStylePatterns))
+      },
       libraryDependencies += "commons-io" % "commons-io" % "2.5"
     )
     .settings(shadedClosureSettings)
     .settings(
-      // This will not work if you do a publishLocal, because that uses ivy...
-      pomPostProcess := {
-        (node: xml.Node) =>
-          addShadedDeps(List(
-            <dependency>
-              <groupId>de.envisia</groupId>
-              <artifactId>shaded-closure-compiler</artifactId>
-              <version>{version.value}</version>
-            </dependency>
-          ), node)
-      }
+      ivyXML :=
+          <dependencies>
+            <dependency org="de.envisia" name="shaded-closure-compiler" rev={version.value} conf="compile->default(compile)"/>
+          </dependencies>
     )
     .aggregate(`shaded`)
     .disablePlugins(sbtassembly.AssemblyPlugin)
