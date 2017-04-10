@@ -3,7 +3,7 @@ sbt-closure
 
 Publish:
 
-    sbt shaded/publishLocal publishSigned
+    sbt shaded/publishLocal release
 
 REMOVE POM CONSISTENSY CHECK
 
