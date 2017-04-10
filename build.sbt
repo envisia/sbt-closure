@@ -1,3 +1,5 @@
+import sbtrelease.ReleaseStateTransformations._
+
 scalaVersion := "2.10.6" // it's a sbt project
 
 val javacSettings = Seq(
@@ -199,4 +201,20 @@ scriptedLaunchOpts ++= Seq(
   "-Xmx2048M",
   "-XX:MaxPermSize=512M",
   s"-Dproject.version=${version.value}"
+)
+
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  ReleaseStep(action = Command.process("publishLocal", _), enableCrossBuild = true),
+  ReleaseStep(action = Command.process("publishSigned", _), enableCrossBuild = true),
+  setNextVersion,
+  commitNextVersion,
+  pushChanges
 )
