@@ -46,6 +46,7 @@ object SbtClosure extends AutoPlugin {
       val moduleResolution: SettingKey[ModuleResolution] = settingKey[ModuleResolution]("resolution of modules")
       val generateSourceMaps: SettingKey[Boolean] = settingKey[Boolean]("Where or not source map files should be generated.")
       val externs: SettingKey[Seq[File]] = settingKey[Seq[File]]("files that are feeded as --externs to closure")
+      val debug: SettingKey[Boolean] = settingKey[Boolean]("turns on debugging output of closure")
     }
 
   }
@@ -59,7 +60,8 @@ object SbtClosure extends AutoPlugin {
     angularPass := true,
     moduleResolution := ModuleResolution.BROWSER,
     entryPoint := None,
-    externs := Nil
+    externs := Nil,
+    debug := false
   )
 
   private class SbtClosureCommandLineRunner(args: Array[String]) extends CommandLineRunner(args) {
@@ -123,6 +125,10 @@ object SbtClosure extends AutoPlugin {
         "--language_out=ECMASCRIPT5_STRICT",
         s"--module_resolution=${moduleResolution.value.toString}"
       ) ++ sm ++ pass ++ externFiles
+
+      if (debug.value) {
+        println(s"Closure Compiler Flags: $flags")
+      }
 
       streams.value.log.debug(s"Closure Compiler Flags: $flags")
 
