@@ -1,6 +1,10 @@
 sbt-closure
 ===========
 
+Publish:
+
+    sbt shaded/publishLocal publishSigned
+
 REMOVE POM CONSISTENSY CHECK
 
 [sbt-web] plugin which integrates with [Google’s Closure Compiler].
