@@ -167,6 +167,19 @@ lazy val `sbt-closure` = project.in(file("."))
             <dependency org="de.envisia" name="shaded-closure-compiler" rev={version.value} conf="compile->default(compile)"/>
           </dependencies>
     )
+    .settings(
+      // This will not work if you do a publishLocal, because that uses ivy...
+      pomPostProcess := {
+        (node: xml.Node) =>
+          addShadedDeps(List(
+            <dependency>
+              <groupId>de.envisia</groupId>
+              <artifactId>shaded-closure-compiler</artifactId>
+              <version>{version.value}</version>
+            </dependency>
+          ), node)
+      }
+    )
     .aggregate(`shaded`)
     .disablePlugins(sbtassembly.AssemblyPlugin)
 

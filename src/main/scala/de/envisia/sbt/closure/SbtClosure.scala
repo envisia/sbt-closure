@@ -45,6 +45,7 @@ object SbtClosure extends AutoPlugin {
       val languageLevel: SettingKey[LanguageLevel] = settingKey[LanguageLevel]("language level of closure")
       val moduleResolution: SettingKey[ModuleResolution] = settingKey[ModuleResolution]("resolution of modules")
       val generateSourceMaps: SettingKey[Boolean] = settingKey[Boolean]("Where or not source map files should be generated.")
+      val externs: SettingKey[Seq[File]] = settingKey[Seq[File]]("files that are feeded as --externs to closure")
     }
 
   }
@@ -57,7 +58,8 @@ object SbtClosure extends AutoPlugin {
     languageLevel := LanguageLevel.ECMASCRIPT6_TYPED,
     angularPass := true,
     moduleResolution := ModuleResolution.BROWSER,
-    entryPoint := None
+    entryPoint := None,
+    externs := Nil
   )
 
   private class SbtClosureCommandLineRunner(args: Array[String]) extends CommandLineRunner(args) {
@@ -111,6 +113,8 @@ object SbtClosure extends AutoPlugin {
 
       val finalEntryPoint = entryPoint.value.map(_.toString).getOrElse(((resourceDirectory in Assets).value / "app" / "main.js").toString)
 
+      val externFiles = externs.value.map(file => s"--externs ${file.toString}")
+
       val flags = Seq(
         s"--entry_point=$finalEntryPoint",
         s"--js_module_root=${sourceDir.toString}",
@@ -118,7 +122,7 @@ object SbtClosure extends AutoPlugin {
         s"--language_in=${languageLevel.value.toString}",
         "--language_out=ECMASCRIPT5_STRICT",
         s"--module_resolution=${moduleResolution.value.toString}"
-      ) ++ sm ++ pass
+      ) ++ sm ++ pass ++ externFiles
 
       streams.value.log.debug(s"Closure Compiler Flags: $flags")
 
