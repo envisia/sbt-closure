@@ -115,7 +115,7 @@ object SbtClosure extends AutoPlugin {
 
       val finalEntryPoint = entryPoint.value.map(_.toString).getOrElse(((resourceDirectory in Assets).value / "app" / "main.js").toString)
 
-      val externFiles = externs.value.map(file => s"--externs ${file.toString}")
+      val externFiles = externs.value.map(file => s"--externs=${file.toString}")
 
       val flags = Seq(
         s"--entry_point=$finalEntryPoint",
