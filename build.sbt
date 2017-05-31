@@ -90,7 +90,7 @@ lazy val `shaded-closure-compiler` = project.in(file("shaded/closure-compiler"))
     .settings(commonSettings)
     .settings(shadeAssemblySettings)
     .settings(
-      libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20170218",
+      libraryDependencies += "com.google.javascript" % "closure-compiler" % "v20170521",
       name := "shaded-closure-compiler"
     )
     .settings(
