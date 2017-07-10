@@ -9,8 +9,8 @@ val javacSettings = Seq(
   "-Xlint:unchecked"
 )
 
-val internal = "envisia" at "https://maven.envisia.de/internal"
-val internalSnapshots = "envisia-snapshots" at "https://maven.envisia.de/internal-snapshots"
+val public = "envisia" at "https://nexus.envisia.de/repository/public/"
+val publicSnapshots = "envisia-snapshots" at "https://nexus.envisia.de/repository/public-snapshots/"
 
 lazy val commonSettings = Seq(
   organization := "de.envisia",
@@ -31,7 +31,7 @@ lazy val commonSettings = Seq(
   javacOptions in IntegrationTest ++= javacSettings,
   publishMavenStyle := true,
   pomIncludeRepository := { _ => false },
-  publishTo := Some(if (isSnapshot.value) internalSnapshots else internal)
+  publishTo := Some(if (isSnapshot.value) publicSnapshots else public)
 )
 
 val disableDocs = Seq[Setting[_]](
@@ -131,7 +131,7 @@ lazy val shaded = Project(id = "shaded", base = file("shaded"))
     .settings(disableDocs)
     .settings(disablePublishing)
     // needed for publishSigned, but is disabled
-    .settings(publishTo := Some("envisia-snapshots" at "https://maven.envisia.de/internal-snapshots"))
+    .settings(publishTo := Some("envisia-snapshots" at "https://nexus.envisia.de/repository/public-snapshots/"))
     .aggregate(`shaded-closure-compiler`)
     .disablePlugins(sbtassembly.AssemblyPlugin)
 
@@ -154,11 +154,11 @@ lazy val `sbt-closure` = project.in(file("."))
     .settings(
       organization := "de.envisia.sbt", // SBT Plugin
       name := "sbt-closure",
-      publishMavenStyle := false,
+      publishMavenStyle := true,
       sbtPlugin := true,
       publishTo := {
         if (isSnapshot.value) Some(Classpaths.sbtPluginSnapshots)
-        else Some(Resolver.url("internal-sbt", url("https://maven.envisia.de/internal-sbt/"))(Resolver.ivyStylePatterns))
+        else Some(Resolver.url("internal-sbt", url("https://nexus.envisia.de/repository/public/"))(Resolver.ivyStylePatterns))
       },
       libraryDependencies += "commons-io" % "commons-io" % "2.5"
     )
